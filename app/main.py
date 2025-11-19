@@ -16,7 +16,11 @@ def main():
             f.write("ref: refs/heads/main\n")
         print("Initialized git directory")
 
-    elif command == "cat-file" and sys.argv[2] == "-p":
+    # reading a blob object
+    elif command == "cat-file":
+        if not sys.argv[2] == "-p":
+            raise RuntimeError(f"Unknown flag #{sys.argv[2]}")
+        
         sha = sys.argv[3]
         filename = f".git/objects/{sha[0:2]}/{sha[2:]}"
         with open(filename, "rb") as f:
@@ -26,25 +30,30 @@ def main():
         content = data[null_index + 1:]
         print(content.decode("utf-8"), end="")
 
-    elif command == "hash-object" and sys.argv[2] == "-w":
-        file = sys.argv[3]
-        with open(file, "rb") as f:
+    # creating a blob object
+    elif command == "hash-object":
+        if not sys.argv[2] == "-w":
+            raise RuntimeError(f"Unknown flag #{sys.argv[2]}")
+        
+        with open(sys.argv[3], "rb") as f:
             content = f.read()
-        # build git object via 'blob <size>\0<content>'
-        size = str(len(content))
-        object = b"blob " + size.encode() + b"\x00" + content
-        sha = hashlib.sha1(object).hexdigest()
 
-        #compress object and store in .git/objects/
-        compressed = zlib.compress(object)
+        # build git object via 'blob <size>\0<content>'
+        object = b"blob %d\x00%s" % (len(content), content)
+
+        sha = hashlib.sha1(object).hexdigest()
+        print(sha)
+
+        # store in .git/objects/
         dir_name = f".git/objects/{sha[:2]}"
         filename = f"{dir_name}/{sha[2:]}"
 
         #make directory if not already existing
         os.makedirs(dir_name, exist_ok=True)
         with open(filename, "wb") as f:
-            f.write(compressed)
-        print(sha)
+            f.write(zlib.compress(object))
+
+
 
 
     else:
