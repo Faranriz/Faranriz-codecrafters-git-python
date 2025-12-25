@@ -53,8 +53,38 @@ def main():
         with open(filename, "wb") as f:
             f.write(zlib.compress(object))
 
+    # read a tree object
+    elif command == "ls-tree":
+        if not sys.argv[2] == "--name-only":
+            raise RuntimeError(f"Unkown flag #{sys.argv[2]}")
+        if not sys.argv[3]:
+            raise RuntimeError("Missing tree_sha")
+        else:
+            tree_sha = sys.argv[3]
 
+        filename = f".git/objects/{tree_sha[0:2]}/{tree_sha[2:]}"
+        with open(filename, "rb") as f:
+            compressed = f.read()
+        data = zlib.decompress(compressed)
+        
+        #skip past header
+        i = data.index(b"\x00") + 1
+        while i < len(data):
+            # parse mode (determines object type: tree/blob)
+            space = data.index(b" ", i)
+            mode = data[i:space].decode("ascii")
+            i = space + 1
 
+            # parse name
+            null_index = data.index(b"\x00", i)
+            name = data[i:null_index].decode("utf-8")
+            print(name)
+            i = null_index + 1
+
+            #parse sha
+            sha_bytes = data[i:i + 20]
+            sha_hex =  sha_bytes.hex()
+            i += 20
 
     else:
         raise RuntimeError(f"Unknown command #{command}")
